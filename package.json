@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "init:env": "tsx scripts/init-env.ts",
     "check-spec": "tsx scripts/check-spec.ts",
     "preflight": "tsx scripts/preflight.ts",
     "sync": "tsx scripts/sync.ts",
