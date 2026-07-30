@@ -20,27 +20,47 @@ You'll fill `.env` in as you go. It's gitignored.
 
 ---
 
-## 1. API key
+## 1. Verify the API layer (no key needed)
+
+Do this before anything else — it's free, needs no credential, and catches the
+endpoint mistakes that would otherwise surface halfway through a sync.
+
+```bash
+curl -o el-openapi.json https://api.elevenlabs.io/openapi.json
+npm run check-spec el-openapi.json
+```
+
+ElevenLabs' OpenAPI spec is public. `check-spec` checks every path and method
+this repo uses against it, suggests the closest real path when one is wrong, and
+prints the required request body fields for the endpoints that matter.
+
+If anything fails, the fix is in `scripts/elevenlabs.ts` — and if the create
+payload shape changed, in `buildConversationConfig()` in `scripts/sync.ts`.
+
+---
+
+## 2. API key
 
 ElevenLabs dashboard → your profile → **API Keys** → create one with access to
 Agents (called Conversational AI in some parts of the UI).
 
-Put it in `.env` as `ELEVENLABS_API_KEY`.
+Put it in `.env` as `ELEVENLABS_API_KEY`. Never commit it — `.env` is gitignored,
+and there's no reason to paste it into a chat or an issue.
 
 ```bash
 npm run preflight
 ```
 
-This probes each endpoint the repo depends on. **Expect some failures** — the
-API layer was written without network access to verify it, so a couple of paths
-are educated guesses. Preflight tells you which ones and where to fix them; they
-all live in `scripts/elevenlabs.ts`.
+Where `check-spec` proves the paths are right, this proves your account actually
+answers on them — the key works, has Agents access, and the plan allows what the
+repo needs. Failures print the response body, which is where a 422 names the
+field that's wrong.
 
 Don't move on until the read-only probes pass.
 
 ---
 
-## 2. Voice clone
+## 3. Voice clone
 
 Dashboard → **Voices** → **Add voice** → Instant Voice Clone (a Professional
 Voice Clone is better and takes ~30 minutes of audio plus a training wait; start
@@ -67,7 +87,7 @@ deletes both. It's the one that actually proves `sync` will work.
 
 ---
 
-## 3. Deploy the tools service
+## 4. Deploy the tools service
 
 The agents call this for the passcode check and opportunity screening, so it has
 to be live before they're any use.
@@ -107,7 +127,7 @@ curl -X POST https://<worker>/tools/verify-passcode \
 
 ---
 
-## 4. Workspace secret
+## 5. Workspace secret
 
 Dashboard → **Agents** → workspace settings → **Secrets**. Add one named
 `agent_tool_secret` with the same value as `AGENT_TOOL_SECRET`.
@@ -117,7 +137,7 @@ value is never written into a prompt.
 
 ---
 
-## 5. Sync the agents
+## 6. Sync the agents
 
 ```bash
 export TOOLS_BASE_URL=https://daehan-voice-agent-tools.<subdomain>.workers.dev
@@ -131,7 +151,7 @@ Commit it.
 
 ---
 
-## 6. Post-call webhook
+## 7. Post-call webhook
 
 Dashboard → workspace settings → **Webhooks** → add
 `https://<worker>/webhooks/post-call` for post-call transcription.
@@ -147,7 +167,7 @@ minutes, so this must match exactly or you'll get no summaries.
 
 ---
 
-## 7. Test before there's a phone number
+## 8. Test before there's a phone number
 
 ```bash
 npm run eval
@@ -167,7 +187,7 @@ yourself. Things worth trying by hand, because they're what a real caller does:
 
 ---
 
-## 8. Phone number
+## 9. Phone number
 
 Dashboard → **Agents** → **Phone numbers**. Either import a Twilio number or
 provision one natively if your plan offers it. Assign the inbound number to the
@@ -183,7 +203,7 @@ Per-minute billing means one open line is a real bill.
 
 ---
 
-## 9. Call it
+## 10. Call it
 
 Call from a number that isn't yours. Walk all three paths, including a failed
 passcode attempt, and confirm the summary email arrives.

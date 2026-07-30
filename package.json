@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check-spec": "tsx scripts/check-spec.ts",
     "preflight": "tsx scripts/preflight.ts",
     "sync": "tsx scripts/sync.ts",
     "sync:dry": "tsx scripts/sync.ts --dry-run",

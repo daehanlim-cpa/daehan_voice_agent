@@ -120,9 +120,24 @@ run against a live key — `api.elevenlabs.io` is blocked by the network policy 
 the environment this was built in. Endpoint paths and payload shapes may need
 correcting. They're deliberately confined to that one file.
 
-`npm run preflight` probes each one and reports which are wrong and where to fix
-them; `npm run preflight -- --write` additionally creates and deletes a
-throwaway agent to validate the create payload. Run it before your first sync.
+Two ways to fix them, cheapest first:
+
+```bash
+curl -o el-openapi.json https://api.elevenlabs.io/openapi.json
+npm run check-spec el-openapi.json
+```
+
+The spec is public and needs no key. `check-spec` reports every path that's
+wrong, suggests the closest real ones, and prints the required request body
+fields for the endpoints that matter. No network, no credential, no live calls.
+
+```bash
+npm run preflight              # read-only probes against your account
+npm run preflight -- --write   # creates and deletes a throwaway agent
+```
+
+`preflight` needs an API key and confirms the account actually behaves as the
+spec claims. Run `check-spec` first — it's free and catches more.
 
 The `llm` values in the agent frontmatter (`claude-sonnet-4-5`) should be
 checked against the model list your ElevenLabs account actually exposes.

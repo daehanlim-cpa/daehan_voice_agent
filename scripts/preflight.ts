@@ -40,6 +40,14 @@ async function probe(entry: Probe): Promise<boolean> {
         : (error as Error).message;
     console.log(`FAIL  ${note}`);
     console.log(`        ${entry.detail}`);
+
+    // The response body is the whole diagnostic on a 422 — it names the field
+    // that's wrong. Printing only the status throws that away.
+    if (error instanceof ElevenLabsError && error.body) {
+      const body = error.body.length > 1200 ? `${error.body.slice(0, 1200)}…` : error.body;
+      console.log(`        response: ${body.replace(/\n/g, "\n        ")}`);
+    }
+
     results.push({ name: entry.name, ok: false, note });
     return false;
   }
