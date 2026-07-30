@@ -72,10 +72,10 @@ wrangler secret put RESEND_API_KEY        # or SLACK_WEBHOOK_URL
 npm run deploy
 ```
 
-In the ElevenLabs dashboard, add a workspace secret named
-`agent_tool_secret` matching `AGENT_TOOL_SECRET` — the tool definitions
-reference it as `{{secret__agent_tool_secret}}` so the value never enters a
-prompt.
+In the ElevenLabs dashboard, add a workspace secret named `agent_tool_secret`
+matching `AGENT_TOOL_SECRET`. This must exist before you sync: `sync` resolves
+the name to a secret ID and embeds that in each tool's headers, so the value
+itself never passes through this repo or any prompt.
 
 ### 2. Sync the agents
 
@@ -152,8 +152,9 @@ because both fail silently rather than loudly:
   is a literal, so every call would have reported the same caller — which would
   have quietly merged every caller into one rate-limit bucket.
 
-The `llm` values in the agent frontmatter (`claude-sonnet-4-5`) should be
-checked against the model list your ElevenLabs account actually exposes.
+The `llm` value in the agent frontmatter is `claude-sonnet-5`, confirmed present
+in the SDK's supported-model enum. If your account's plan doesn't expose it,
+`/v1/convai/llm/list` returns what it does.
 
 ## Knowledge base status
 
