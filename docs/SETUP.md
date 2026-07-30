@@ -59,20 +59,24 @@ Don't move on until the read-only probes pass.
 
 ---
 
-## 3. Voice clone
+## 3. Voice
 
-Dashboard → **Voices** → **Add voice** → Instant Voice Clone (a Professional
-Voice Clone is better and takes ~30 minutes of audio plus a training wait; start
-with instant and upgrade later if you like it).
+Dashboard → **Voices** → **Library**. Preview a few and copy the ID of the one
+you want.
 
-Recording notes, since this voice will answer recruiters:
+Two things worth listening for, since this voice answers recruiters over a phone
+line: preview it at conversational speed rather than reading tone, and prefer a
+voice that stays clear when clipped — telephony is narrowband, and voices with a
+lot of low-end warmth lose it at 8kHz.
 
-- A quiet room and a decent mic. Phone audio is narrowband and unforgiving —
-  room echo that sounds fine on a laptop becomes mush at 8kHz.
-- 3+ minutes of continuous natural speech. Read something conversational, not a
-  list.
-- Match the register you want on the phone: how you'd talk to a colleague, not
-  how you'd read an audiobook.
+Because it's a stock voice rather than a clone of you, the AI disclosure in the
+receptionist's greeting is doing less work than it would otherwise — nobody will
+mistake it for you. Keep the disclosure anyway; it's a legal requirement in
+several states, not just a courtesy.
+
+If you later want it to sound like you, add an Instant Voice Clone (~3 minutes
+of clean audio) or a Professional clone (~30 minutes plus a training wait), then
+swap the ID here and re-sync. Nothing else changes.
 
 Copy the voice ID into `.env` as `ELEVENLABS_VOICE_ID`, then:
 
