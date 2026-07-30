@@ -43,10 +43,33 @@ export class ElevenLabsClient {
     return (text ? JSON.parse(text) : {}) as T;
   }
 
+  /** Cheapest authenticated call — used by preflight to validate the key. */
+  getUser() {
+    return this.request<{ subscription?: { tier?: string } }>("/v1/user");
+  }
+
   listAgents() {
     return this.request<{ agents: { agent_id: string; name: string }[] }>(
       "/v1/convai/agents",
     );
+  }
+
+  deleteAgent(agentId: string) {
+    return this.request<unknown>(`/v1/convai/agents/${agentId}`, { method: "DELETE" });
+  }
+
+  listKnowledgeBase() {
+    return this.request<{ documents: { id: string; name: string }[] }>(
+      "/v1/convai/knowledge-base",
+    );
+  }
+
+  getVoice(voiceId: string) {
+    return this.request<{ voice_id: string; name: string }>(`/v1/voices/${voiceId}`);
+  }
+
+  listPhoneNumbers() {
+    return this.request<unknown[]>("/v1/convai/phone-numbers");
   }
 
   createAgent(body: unknown) {

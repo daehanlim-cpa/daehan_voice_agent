@@ -50,10 +50,13 @@ putting the value where the model can see it is the first.
 
 ## Setup
 
+Full ordered runbook: **[docs/SETUP.md](docs/SETUP.md)**. Short version below.
+
 ```bash
 npm install
 cp .env.example .env          # scripts
 cp .env.example .dev.vars     # workers dev
+npm run preflight             # check which API endpoints actually work
 ```
 
 ### 1. Deploy the tools service
@@ -113,10 +116,13 @@ plus a `knowledge_base` entry on whichever agents should see it.
 ## Known unverified
 
 `scripts/elevenlabs.ts` was written against the documented Agents API but never
-run against a live key — `api.elevenlabs.io` was unreachable from the
-environment this was built in. Endpoint paths and payload shapes may need
-correcting on the first real sync. They are deliberately confined to that one
-file. Start with `npm run sync:dry`, then a real sync, and fix what 4xxs.
+run against a live key — `api.elevenlabs.io` is blocked by the network policy on
+the environment this was built in. Endpoint paths and payload shapes may need
+correcting. They're deliberately confined to that one file.
+
+`npm run preflight` probes each one and reports which are wrong and where to fix
+them; `npm run preflight -- --write` additionally creates and deletes a
+throwaway agent to validate the create payload. Run it before your first sync.
 
 The `llm` values in the agent frontmatter (`claude-sonnet-4-5`) should be
 checked against the model list your ElevenLabs account actually exposes.
