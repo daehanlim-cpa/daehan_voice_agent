@@ -1,0 +1,24 @@
+name = "daehan-voice-agent-tools"
+main = "tools/src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Rate limiting state: passcode attempts and per-caller call counts.
+# Create with: wrangler kv namespace create RATE_LIMIT
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+NOTIFY_CHANNEL = "email"
+MAX_PASSCODE_ATTEMPTS = "5"
+PASSCODE_WINDOW_SECONDS = "3600"
+MAX_CALLS_PER_NUMBER_PER_DAY = "10"
+
+# Secrets are set with `wrangler secret put <NAME>`, never in this file:
+#   AGENT_TOOL_SECRET
+#   ACCESS_PASSCODE
+#   ELEVENLABS_WEBHOOK_SECRET
+#   SCREEN_COMP_FLOOR, SCREEN_WORK_MODE, SCREEN_LOCATIONS, SCREEN_STAGES,
+#   SCREEN_ROLES_YES, SCREEN_ROLES_NO, SCREEN_DISQUALIFIERS
+#   NOTIFY_EMAIL_TO, RESEND_API_KEY, SLACK_WEBHOOK_URL

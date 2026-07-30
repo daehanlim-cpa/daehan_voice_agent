@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.wrangler/
+
+# Secrets — never commit. See .env.example for the shape.
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# Voice clone source audio: personal biometric data, keep it local.
+voice/
+
+*.log
+.DS_Store
