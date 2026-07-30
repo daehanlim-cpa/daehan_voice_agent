@@ -1,61 +1,60 @@
-# Daehan — overview
+# Daehan Lim, CPA — overview
 
-<!--
-PLACEHOLDER. Drafted from your resume + LinkedIn/GitHub in phase 2, then
-corrected by you. Until this is filled in, the recruiter agent will correctly
-answer "I don't have that one" to essentially everything.
-
-Delete the comments as you fill each section in.
--->
+Source: `content/resume.md` and `data/projects.ts` in the Portfolio repo.
+Keep this file in sync when the resume changes.
 
 ## Who he is
 
-<!-- Two or three sentences. What he does, where he is professionally, what
-kind of work he's known for. This is what the agent leads with. -->
+Daehan Lim is a Senior Forward Deployed Engineer at Deloitte with about seven
+years of experience owning enterprise customer engagements end to end —
+discovery, solution design, and hands-on production delivery. He works at the
+intersection of AI, data platform modernization, and regulated financial
+services.
+
+The unusual part of his profile is the combination: he's a licensed CPA who
+came up through AML and audit work, then moved into building production data
+platforms and GenAI systems. He can sit with a Chief Compliance Officer to scope
+a control framework and then go build the pipeline that implements it.
 
 ## Current role
 
-<!-- Title, company, since when, what he actually does day to day. -->
+**Senior Forward Deployed Engineer, Deloitte** — Costa Mesa, California.
+Full-time, hybrid. Started July 2026.
 
-## Background
+Forward-deployed technical owner across enterprise customers: leads stakeholder
+discovery and solution design, then builds and deploys production GenAI
+platforms, agentic workflows, and scalable data architectures directly with
+client teams.
 
-<!-- Reverse-chronological. Per role: company, title, dates, and two or three
-specifics — what he built, owned, or changed. Dates need to be right; the agent
-will state them as given. -->
+## Contact
 
-## Skills
+Email: daehanlim1@gmail.com
+LinkedIn: https://www.linkedin.com/in/daehan-lim-cpa/
+Portfolio: https://daehanlim.com
 
-<!-- What he actually works in, and roughly how deep. The agent is instructed
-not to infer adjacent skills, so list what should be claimable. -->
+## Certifications
 
-## Education
+- Certified Public Accountant (CPA)
+- SnowPro Advanced: Data Engineer
+- SnowPro Advanced: Data Architect
+- SnowPro Core
+- Databricks Certified Data Engineer Associate
 
-<!-- Institution, degree, year. -->
+## Languages and tools
 
-## Common questions
+SQL, Python, Snowflake, Databricks, dbt, Prefect, AWS, Azure.
 
-<!--
-Q&A for what recruiters actually ask. Direct question-and-answer beats prose
-here — the model matches on the question text.
+Also appears across his project work: Power BI, Prefect, GitHub and GitLab
+CI/CD, Neo4j, AWS Aurora, Amazon Redshift, Teradata, LangChain, Google Gemini,
+RAG and vector embeddings, Gherkin, JIRA.
 
-Q: Is he open to new roles right now?
-A:
+## Recognition
 
-Q: Is he authorized to work in the US? Does he need sponsorship?
-A:
+Awarded **AI & Data Learning Champion of the Year** at EY for his work building
+the firm's data certification and upskilling program.
 
-Q: What's his notice period?
-A:
+## Writing
 
-Q: What's he looking for in his next role?
-A:
-
-Q: Why is he open to leaving his current role?
-A:
--->
-
-## Off limits
-
-Compensation, current or past — the agent declines and points to Daehan.
-Home address, personal email, personal phone, family. None of it belongs in this
-file.
+Publishes on Medium and on his portfolio site, in both English and Korean.
+Recent posts cover succeeding in data consulting without a heavy coding
+background, and a guide for international students pursuing Big 4 internships.

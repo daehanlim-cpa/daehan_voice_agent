@@ -11,6 +11,8 @@ export interface Env {
   // Screening bar
   SCREEN_COMP_FLOOR?: string;
   SCREEN_WORK_MODE?: string;
+  /** "true" makes a work-mode mismatch a hard no. Default: a preference only. */
+  SCREEN_WORK_MODE_STRICT?: string;
   SCREEN_LOCATIONS?: string;
   SCREEN_STAGES?: string;
   SCREEN_ROLES_YES?: string;

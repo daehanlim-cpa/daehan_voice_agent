@@ -110,21 +110,23 @@ export function assess(opportunity: Opportunity, env: Env): Assessment {
     }
   }
 
-  // Work mode.
+  // Work mode. A preference and a requirement are different things: unless
+  // SCREEN_WORK_MODE_STRICT is set, a mismatch lowers the verdict to "possible"
+  // rather than killing it, so a flexible preference doesn't silently reject
+  // roles that are otherwise a fit.
   const wantedMode = (env.SCREEN_WORK_MODE ?? "any").trim().toLowerCase();
   if (wantedMode && wantedMode !== "any") {
+    const strict = (env.SCREEN_WORK_MODE_STRICT ?? "false").toLowerCase() === "true";
     const stated = (opportunity.work_mode ?? "").toLowerCase();
+
     if (!stated) {
       concerns.push("work mode not stated");
-    } else if (!stated.includes(wantedMode)) {
-      // Hybrid is a near-miss for a remote preference, not a hard no.
-      if (wantedMode === "remote" && stated.includes("hybrid")) {
-        concerns.push("hybrid against a remote preference");
-      } else {
-        blockers.push(`work mode mismatch: wanted ${wantedMode}, got ${stated}`);
-      }
-    } else {
+    } else if (stated.includes(wantedMode)) {
       positives.push(`work mode matches (${wantedMode})`);
+    } else if (strict) {
+      blockers.push(`work mode mismatch: wanted ${wantedMode}, got ${stated}`);
+    } else {
+      concerns.push(`${stated} against a ${wantedMode} preference`);
     }
   }
 

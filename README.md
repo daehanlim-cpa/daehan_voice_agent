@@ -121,6 +121,17 @@ file. Start with `npm run sync:dry`, then a real sync, and fix what 4xxs.
 The `llm` values in the agent frontmatter (`claude-sonnet-4-5`) should be
 checked against the model list your ElevenLabs account actually exposes.
 
+## Knowledge base status
+
+`kb/recruiter/` is written, sourced from `content/resume.md` and
+`data/projects.ts` in the [Portfolio](https://github.com/daehanlim-cpa/Portfolio)
+repo. When the resume changes there, update here and re-sync — and check the
+factual cases at the bottom of `evals/cases.yaml`, which assert against it.
+
+`kb/friend/` and `kb/virtual-me/` have their public-derived sections filled in
+from his blog posts; the personal material is still commented-out prompts.
+The agents will honestly say they don't know until those are written.
+
 ## Guardrails
 
 Per-agent max call duration is set in frontmatter. Passcode attempts are rate
