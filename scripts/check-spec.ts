@@ -41,6 +41,10 @@ const ENDPOINTS: Endpoint[] = [
     critical: false,
   },
   { fn: "listKnowledgeBase", method: "get", path: "/v1/convai/knowledge-base", critical: false },
+  { fn: "listSecrets", method: "get", path: "/v1/convai/secrets", critical: false },
+  { fn: "listTools", method: "get", path: "/v1/convai/tools", critical: false },
+  { fn: "createTool", method: "post", path: "/v1/convai/tools", critical: true },
+  { fn: "updateTool", method: "patch", path: "/v1/convai/tools/{tool_id}", critical: false },
   { fn: "getVoice", method: "get", path: "/v1/voices/{voice_id}", critical: false },
   { fn: "listPhoneNumbers", method: "get", path: "/v1/convai/phone-numbers", critical: false },
   {

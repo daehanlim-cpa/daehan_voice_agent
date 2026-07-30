@@ -23,6 +23,11 @@ const IDS_PATH = join(AGENTS_DIR, "ids.json");
 const DRY_RUN = process.argv.includes("--dry-run");
 const TOOLS_BASE_URL = process.env.TOOLS_BASE_URL ?? "";
 
+/** Name of the workspace secret holding AGENT_TOOL_SECRET. */
+const SECRET_NAME = process.env.ELEVENLABS_SECRET_NAME ?? "agent_tool_secret";
+const AGENT_TIMEZONE = process.env.AGENT_TIMEZONE ?? "America/Los_Angeles";
+const DEFAULT_LLM = "claude-sonnet-5";
+
 interface Frontmatter {
   slug: string;
   name: string;
@@ -42,6 +47,7 @@ interface AgentDefinition {
 
 interface IdMap {
   agents: Record<string, string>;
+  tools: Record<string, string>;
   knowledgeBase: Record<string, { id: string; hash: string }>;
 }
 
@@ -105,33 +111,50 @@ async function hash(text: string): Promise<string> {
 }
 
 async function loadIds(): Promise<IdMap> {
-  if (!existsSync(IDS_PATH)) return { agents: {}, knowledgeBase: {} };
+  if (!existsSync(IDS_PATH)) return { agents: {}, tools: {}, knowledgeBase: {} };
   const parsed = JSON.parse(await readFile(IDS_PATH, "utf8")) as Partial<IdMap>;
-  return { agents: parsed.agents ?? {}, knowledgeBase: parsed.knowledgeBase ?? {} };
+  return {
+    agents: parsed.agents ?? {},
+    tools: parsed.tools ?? {},
+    knowledgeBase: parsed.knowledgeBase ?? {},
+  };
 }
 
 async function saveIds(ids: IdMap): Promise<void> {
   await writeFile(IDS_PATH, `${JSON.stringify(ids, null, 2)}\n`);
 }
 
-function buildTools(names: string[]): unknown[] {
-  if (names.length === 0) return [];
+/**
+ * Webhook tool definitions.
+ *
+ * Two things here are easy to get wrong and fail silently:
+ *
+ * - `request_headers` values are not template strings. A secret is referenced
+ *   as `{secret_id: "..."}`, using the secret's ID rather than its name — a
+ *   plain "{{secret__name}}" string is sent to the worker literally, and every
+ *   tool call comes back 401.
+ * - System values like the caller's number are wired with `dynamic_variable`,
+ *   not `constant_value`. `constant_value` is a literal, so the same string
+ *   would arrive on every call.
+ */
+function toolDefinitions(secretId: string): Record<string, unknown> {
   if (!TOOLS_BASE_URL) {
     throw new Error("TOOLS_BASE_URL must be set to configure webhook tools");
   }
 
-  const secretHeader = { "X-Agent-Secret": "{{secret__agent_tool_secret}}" };
+  const requestHeaders = { "X-Agent-Secret": { secret_id: secretId } };
 
-  const definitions: Record<string, unknown> = {
+  return {
     verify_passcode: {
       type: "webhook",
       name: "verify_passcode",
       description:
         "Check a caller-supplied passphrase. Returns whether it is valid, how many attempts remain, and whether the caller is locked out. This is the only way to check the passphrase.",
+      response_timeout_secs: 10,
       api_schema: {
         url: `${TOOLS_BASE_URL}/tools/verify-passcode`,
         method: "POST",
-        request_headers: secretHeader,
+        request_headers: requestHeaders,
         request_body_schema: {
           type: "object",
           required: ["passcode"],
@@ -143,8 +166,7 @@ function buildTools(names: string[]): unknown[] {
             caller_id: {
               type: "string",
               description: "The caller's phone number.",
-              // Populated by ElevenLabs at call time, not by the model.
-              constant_value: "{{system__caller_id}}",
+              dynamic_variable: "system__caller_id",
             },
           },
         },
@@ -155,10 +177,11 @@ function buildTools(names: string[]): unknown[] {
       name: "submit_opportunity",
       description:
         "Record an inbound opportunity and get a verdict on whether it fits. Call once you have most of the details. Leave a field out if it was not discussed — never guess.",
+      response_timeout_secs: 15,
       api_schema: {
         url: `${TOOLS_BASE_URL}/tools/submit-opportunity`,
         method: "POST",
-        request_headers: secretHeader,
+        request_headers: requestHeaders,
         request_body_schema: {
           type: "object",
           required: [],
@@ -178,30 +201,29 @@ function buildTools(names: string[]): unknown[] {
             conversation_id: {
               type: "string",
               description: "Conversation identifier.",
-              constant_value: "{{system__conversation_id}}",
+              dynamic_variable: "system__conversation_id",
             },
           },
         },
       },
     },
   };
-
-  return names.map((name) => {
-    const definition = definitions[name];
-    if (!definition) throw new Error(`unknown tool: ${name}`);
-    return definition;
-  });
 }
 
+/**
+ * Transfers are configured as a built-in system tool rather than an entry in
+ * the tools list.
+ */
 function buildTransferTool(targets: { slug: string; agentId: string }[]): unknown {
   return {
-    type: "system",
     name: "transfer_to_agent",
     params: {
       system_tool_type: "transfer_to_agent",
       transfers: targets.map((target) => ({
         agent_id: target.agentId,
         condition: `The caller should be handled by the ${target.slug} agent.`,
+        // The specialists have no first message; they pick up mid-conversation.
+        enable_transferred_agent_first_message: false,
       })),
     },
   };
@@ -210,7 +232,8 @@ function buildTransferTool(targets: { slug: string; agentId: string }[]): unknow
 function buildConversationConfig(
   definition: AgentDefinition,
   knowledgeBaseIds: { id: string; name: string }[],
-  tools: unknown[],
+  toolIds: string[],
+  transferTool: unknown | null,
 ): unknown {
   const { frontmatter, systemPrompt } = definition;
 
@@ -220,14 +243,21 @@ function buildConversationConfig(
       first_message: frontmatter.first_message ?? "",
       prompt: {
         prompt: systemPrompt,
-        llm: frontmatter.llm ?? "claude-sonnet-4-5",
+        llm: frontmatter.llm ?? DEFAULT_LLM,
         temperature: frontmatter.temperature ?? 0.3,
-        tools,
+        tool_ids: toolIds,
+        ...(transferTool
+          ? { built_in_tools: { transfer_to_agent: transferTool } }
+          : {}),
         knowledge_base: knowledgeBaseIds.map((entry) => ({
           type: "text",
           id: entry.id,
           name: entry.name,
         })),
+        // Without a timezone the agent has no idea what today's date is, and
+        // will do arithmetic on the dates in the knowledge base anyway —
+        // inventing tenures and "he's been there for X years". Costa Mesa.
+        timezone: AGENT_TIMEZONE,
         // Small corpus: the whole document set fits in context, and retrieval
         // over a few thousand tokens mostly adds a way to miss the right chunk.
         // Flip to true once kb/ outgrows the context window.
@@ -241,6 +271,66 @@ function buildConversationConfig(
       max_duration_seconds: frontmatter.max_duration_seconds ?? 600,
     },
   };
+}
+
+/**
+ * Creates or updates the webhook tools and returns name → tool ID.
+ *
+ * Inline tool definitions on the agent are deprecated in favour of tool_ids,
+ * so tools are first-class objects with their own lifecycle.
+ */
+async function syncTools(
+  client: ElevenLabsClient | null,
+  ids: IdMap,
+  secretId: string,
+): Promise<Record<string, string>> {
+  const definitions = toolDefinitions(secretId);
+  const resolved: Record<string, string> = {};
+
+  for (const [name, config] of Object.entries(definitions)) {
+    const existingId = ids.tools[name];
+    console.log(`  ${name}: ${existingId ? `update (${existingId})` : "create"}`);
+
+    if (DRY_RUN || !client) {
+      resolved[name] = existingId ?? `dry-run-${name}`;
+      continue;
+    }
+
+    if (existingId) {
+      await client.updateTool(existingId, config);
+      resolved[name] = existingId;
+    } else {
+      const created = await client.createTool(config);
+      resolved[name] = created.id;
+      ids.tools[name] = created.id;
+    }
+  }
+
+  return resolved;
+}
+
+/**
+ * Resolves the workspace secret name into the ID the tool headers need.
+ *
+ * The secret must already exist — it is created in the dashboard so its value
+ * never passes through this repo.
+ */
+async function resolveSecretId(client: ElevenLabsClient | null): Promise<string> {
+  if (DRY_RUN || !client) return "dry-run-secret-id";
+
+  const { secrets } = await client.listSecrets();
+  const match = secrets?.find((secret) => secret.name === SECRET_NAME);
+
+  if (!match) {
+    const available = secrets?.map((secret) => secret.name).join(", ") || "none";
+    throw new Error(
+      `no workspace secret named '${SECRET_NAME}'. Create it in the ElevenLabs ` +
+        `dashboard with the same value as AGENT_TOOL_SECRET, then re-run. ` +
+        `Existing secrets: ${available}`,
+    );
+  }
+
+  return match.secret_id;
 }
 
 async function main() {
@@ -294,22 +384,39 @@ async function main() {
     }
   }
 
+  // ── Tools ───────────────────────────────────────────────────────────────
+  console.log("\nTools:");
+  const secretId = await resolveSecretId(client);
+  const toolIds = await syncTools(client, ids, secretId);
+
   // ── Agents, pass 1: create or update without transfers ──────────────────
   // Transfer targets are agent IDs, which do not exist until every agent does.
   console.log("\nAgents:");
 
-  for (const definition of definitions) {
-    const { slug, name } = definition.frontmatter;
-    const kbIds = (definition.frontmatter.knowledge_base ?? [])
+  const resolveKb = (definition: AgentDefinition, warn: boolean) =>
+    (definition.frontmatter.knowledge_base ?? [])
       .map((collection) => {
         const document = documents.get(collection);
-        if (!document) console.warn(`  ${slug}: kb/${collection} referenced but empty or missing`);
+        if (!document && warn) {
+          console.warn(
+            `  ${definition.frontmatter.slug}: kb/${collection} referenced but empty or missing`,
+          );
+        }
         return document;
       })
       .filter((entry): entry is { id: string; name: string } => Boolean(entry));
 
-    const tools = buildTools(definition.frontmatter.tools ?? []);
-    const config = buildConversationConfig(definition, kbIds, tools);
+  const resolveToolIds = (definition: AgentDefinition) =>
+    (definition.frontmatter.tools ?? []).map((name) => {
+      const id = toolIds[name];
+      if (!id) throw new Error(`${definition.frontmatter.slug}: unknown tool '${name}'`);
+      return id;
+    });
+
+  for (const definition of definitions) {
+    const { slug, name } = definition.frontmatter;
+    const kbIds = resolveKb(definition, true);
+    const config = buildConversationConfig(definition, kbIds, resolveToolIds(definition), null);
     const existingId = ids.agents[slug];
 
     console.log(`  ${slug}: ${existingId ? `update (${existingId})` : "create"}`);
@@ -344,18 +451,14 @@ async function main() {
     console.log(`  ${slug}: transfers → ${targets.map((t) => t.slug).join(", ")}`);
     if (DRY_RUN || !client) continue;
 
-    const kbIds = (definition.frontmatter.knowledge_base ?? [])
-      .map((collection) => documents.get(collection))
-      .filter((entry): entry is { id: string; name: string } => Boolean(entry));
-
-    const tools = [
-      ...buildTools(definition.frontmatter.tools ?? []),
-      buildTransferTool(targets),
-    ];
-
     await client.updateAgent(ids.agents[slug]!, {
       name: definition.frontmatter.name,
-      conversation_config: buildConversationConfig(definition, kbIds, tools),
+      conversation_config: buildConversationConfig(
+        definition,
+        resolveKb(definition, false),
+        resolveToolIds(definition),
+        buildTransferTool(targets),
+      ),
     });
   }
 

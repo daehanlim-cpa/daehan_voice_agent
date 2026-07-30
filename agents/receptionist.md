@@ -1,7 +1,7 @@
 ---
 slug: receptionist
 name: "Daehan — Receptionist"
-llm: claude-sonnet-4-5
+llm: claude-sonnet-5
 temperature: 0.2
 max_duration_seconds: 300
 first_message: >-

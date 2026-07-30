@@ -113,31 +113,43 @@ Adding an agent means a new `agents/<slug>.md` plus a `transfers` entry on the
 receptionist. Adding a knowledge collection means a new `kb/<name>/` directory
 plus a `knowledge_base` entry on whichever agents should see it.
 
-## Known unverified
+## API layer
 
-`scripts/elevenlabs.ts` was written against the documented Agents API but never
-run against a live key — `api.elevenlabs.io` is blocked by the network policy on
-the environment this was built in. Endpoint paths and payload shapes may need
-correcting. They're deliberately confined to that one file.
+`scripts/elevenlabs.ts` was verified against `@elevenlabs/elevenlabs-js`
+v2.59.0, which is code-generated from the same OpenAPI spec that backs the live
+API. All eleven endpoint paths and methods are confirmed, as are the
+`conversation_config`, webhook tool, and transfer payload shapes.
 
-Two ways to fix them, cheapest first:
-
-```bash
-curl -o el-openapi.json https://api.elevenlabs.io/openapi.json
-npm run check-spec el-openapi.json
-```
-
-The spec is public and needs no key. `check-spec` reports every path that's
-wrong, suggests the closest real ones, and prints the required request body
-fields for the endpoints that matter. No network, no credential, no live calls.
+It has still never run against a real key. To check that:
 
 ```bash
 npm run preflight              # read-only probes against your account
 npm run preflight -- --write   # creates and deletes a throwaway agent
 ```
 
-`preflight` needs an API key and confirms the account actually behaves as the
-spec claims. Run `check-spec` first — it's free and catches more.
+To re-verify after an API change, without a key:
+
+```bash
+curl -o el-openapi.json https://api.elevenlabs.io/openapi.json
+npm run check-spec el-openapi.json
+```
+
+`check-spec` reports any path that no longer exists, suggests the closest real
+ones, and prints required request body fields. The spec is public — no
+credential needed.
+
+Two corrections that came out of the verification pass are worth knowing about,
+because both fail silently rather than loudly:
+
+- **Webhook headers are objects, not template strings.** A workspace secret is
+  referenced as `{"secret_id": "..."}` using the secret's *ID*, not its name. A
+  `"{{secret__name}}"` string is forwarded literally and every tool call 401s.
+  `sync` resolves the name to an ID via `/v1/convai/secrets` and fails with a
+  clear message if the secret doesn't exist.
+- **System values use `dynamic_variable`, not `constant_value`.** The caller's
+  number is wired as `dynamic_variable: "system__caller_id"`. `constant_value`
+  is a literal, so every call would have reported the same caller — which would
+  have quietly merged every caller into one rate-limit bucket.
 
 The `llm` values in the agent frontmatter (`claude-sonnet-4-5`) should be
 checked against the model list your ElevenLabs account actually exposes.

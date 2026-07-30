@@ -1,7 +1,7 @@
 ---
 slug: recruiter
 name: "Daehan — Professional"
-llm: claude-sonnet-4-5
+llm: claude-sonnet-5
 temperature: 0.3
 max_duration_seconds: 900
 first_message: null

@@ -1,7 +1,7 @@
 ---
 slug: virtual-me
 name: "Daehan — Virtual Self"
-llm: claude-sonnet-4-5
+llm: claude-sonnet-5
 temperature: 0.8
 max_duration_seconds: 900
 first_message: null

@@ -1,11 +1,10 @@
 /**
  * Every ElevenLabs API call lives in this file.
  *
- * The paths and payload shapes below were written against the documented
- * Agents API but have NOT been verified against a live key — `api.elevenlabs.io`
- * is unreachable from the environment this was built in. Expect to correct one
- * or two of them on the first real sync; that is why they are all here rather
- * than spread through the codebase.
+ * Paths and payload shapes were verified against @elevenlabs/elevenlabs-js
+ * v2.59.0, which is code-generated from the same OpenAPI spec that backs the
+ * live API. They have still never been exercised against a real key, so a
+ * runtime surprise is possible — `npm run preflight` is the check for that.
  *
  * Reference: https://elevenlabs.io/docs/api-reference/agents/create
  */
@@ -83,6 +82,36 @@ export class ElevenLabsClient {
     return this.request<{ agent_id: string }>(`/v1/convai/agents/${agentId}`, {
       method: "PATCH",
       body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * Workspace secrets. Webhook tool headers reference these by ID, not by
+   * name, so sync has to resolve the name it knows into the ID the API wants.
+   */
+  listSecrets() {
+    return this.request<{ secrets: { secret_id: string; name: string }[] }>(
+      "/v1/convai/secrets",
+    );
+  }
+
+  listTools() {
+    return this.request<{
+      tools: { id: string; tool_config?: { name?: string } }[];
+    }>("/v1/convai/tools");
+  }
+
+  createTool(toolConfig: unknown) {
+    return this.request<{ id: string }>("/v1/convai/tools", {
+      method: "POST",
+      body: JSON.stringify({ tool_config: toolConfig }),
+    });
+  }
+
+  updateTool(toolId: string, toolConfig: unknown) {
+    return this.request<{ id: string }>(`/v1/convai/tools/${toolId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ tool_config: toolConfig }),
     });
   }
 

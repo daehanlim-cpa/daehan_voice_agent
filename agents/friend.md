@@ -1,7 +1,7 @@
 ---
 slug: friend
 name: "Daehan — Friend"
-llm: claude-sonnet-4-5
+llm: claude-sonnet-5
 temperature: 0.6
 max_duration_seconds: 900
 first_message: null

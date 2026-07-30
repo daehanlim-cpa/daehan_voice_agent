@@ -20,22 +20,21 @@ You'll fill `.env` in as you go. It's gitignored.
 
 ---
 
-## 1. Verify the API layer (no key needed)
+## 1. Re-verify the API layer (optional, no key needed)
 
-Do this before anything else — it's free, needs no credential, and catches the
-endpoint mistakes that would otherwise surface halfway through a sync.
+The API layer was already verified against `@elevenlabs/elevenlabs-js` v2.59.0,
+so you can skip this unless a sync fails with a 404 or 422 — meaning the API
+moved since.
 
 ```bash
 curl -o el-openapi.json https://api.elevenlabs.io/openapi.json
 npm run check-spec el-openapi.json
 ```
 
-ElevenLabs' OpenAPI spec is public. `check-spec` checks every path and method
-this repo uses against it, suggests the closest real path when one is wrong, and
-prints the required request body fields for the endpoints that matter.
-
-If anything fails, the fix is in `scripts/elevenlabs.ts` — and if the create
-payload shape changed, in `buildConversationConfig()` in `scripts/sync.ts`.
+The spec is public. `check-spec` checks every path and method this repo uses,
+suggests the closest real path when one is wrong, and prints required request
+body fields. Fixes go in `scripts/elevenlabs.ts`, or `buildConversationConfig()`
+in `scripts/sync.ts` if a payload shape changed.
 
 ---
 
@@ -129,11 +128,15 @@ curl -X POST https://<worker>/tools/verify-passcode \
 
 ## 5. Workspace secret
 
-Dashboard → **Agents** → workspace settings → **Secrets**. Add one named
-`agent_tool_secret` with the same value as `AGENT_TOOL_SECRET`.
+Dashboard → **Agents** → workspace settings → **Secrets**. Add one named exactly
+`agent_tool_secret`, with the same value you gave `AGENT_TOOL_SECRET` in step 4.
 
-The tool definitions reference it as `{{secret__agent_tool_secret}}`, so the
-value is never written into a prompt.
+This has to exist before you sync. `sync` looks the name up via the API and
+embeds the resulting secret ID in each webhook tool's headers; if there's no
+match it stops and tells you, rather than deploying tools that 401 on every
+call. The value itself never passes through this repo.
+
+(If you'd rather use a different name, set `ELEVENLABS_SECRET_NAME`.)
 
 ---
 
