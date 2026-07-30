@@ -50,13 +50,14 @@ putting the value where the model can see it is the first.
 
 ## Setup
 
-Full ordered runbook: **[docs/SETUP.md](docs/SETUP.md)**. Short version below.
+Full ordered runbook: **[docs/SETUP.md](docs/SETUP.md)**. To hand the setup to
+an agent running on your own machine: **[docs/HANDOFF.md](docs/HANDOFF.md)**.
+Short version below.
 
 ```bash
 npm install
-cp .env.example .env          # scripts
-cp .env.example .dev.vars     # workers dev
-npm run preflight             # check which API endpoints actually work
+npm run init:env              # creates .env, refuses if git would track it
+npm run preflight             # probe the API with your key
 ```
 
 ### 1. Deploy the tools service

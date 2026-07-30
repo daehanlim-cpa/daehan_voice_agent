@@ -23,25 +23,77 @@ const EXAMPLE_PATH = join(ROOT, ".env.example");
 
 const FORCE = process.argv.includes("--force");
 
-/** Reads a line with the terminal echo suppressed. */
-function prompt(question: string, secret: boolean): Promise<string> {
-  return new Promise((resolve) => {
-    const rl = createInterface({ input: process.stdin, output: process.stdout });
+type Asker = {
+  ask: (question: string, secret: boolean) => Promise<string>;
+  close: () => void;
+};
 
-    if (secret && process.stdin.isTTY) {
-      // readline still consumes the keystrokes; this just stops them rendering.
-      const output = rl as unknown as { output: NodeJS.WriteStream; _writeToOutput?: unknown };
-      output._writeToOutput = function (chunk: string) {
-        if (chunk.includes(question)) output.output.write(question);
-      };
-    }
+/**
+ * One readline interface reused for every question.
+ *
+ * A fresh interface per question looks equivalent but isn't: the first one
+ * buffers everything available on stdin, so a second interface reading from a
+ * pipe gets EOF immediately, its callback never fires, and the promise hangs
+ * forever. Node then exits quietly with an empty event loop — no error, and
+ * whatever came after the prompts simply never ran.
+ */
+async function createAsker(): Promise<Asker> {
+  // Non-interactive stdin (a pipe, a heredoc, CI) is drained up front.
+  // readline's question() cannot be used reliably here: it keeps consuming
+  // lines into its own buffer between calls, so a line that arrives before the
+  // next question is registered is dropped, and EOF closes the interface while
+  // later questions still expect answers. Both fail silently.
+  if (!process.stdin.isTTY) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) chunks.push(Buffer.from(chunk));
+    const lines = Buffer.concat(chunks).toString("utf8").split(/\r?\n/);
 
-    rl.question(question, (answer) => {
-      if (secret) process.stdout.write("\n");
-      rl.close();
-      resolve(answer.trim());
+    return {
+      ask: async (question) => {
+        process.stdout.write(question);
+        const value = (lines.shift() ?? "").trim();
+        process.stdout.write("\n");
+        return value;
+      },
+      close: () => {},
+    };
+  }
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+
+  // readline still consumes keystrokes when echo is off; this only stops them
+  // being rendered. Toggled per question rather than per interface.
+  let hideInput = false;
+  let currentQuestion = "";
+  const internals = rl as unknown as {
+    output: NodeJS.WriteStream;
+    _writeToOutput: (chunk: string) => void;
+  };
+  const writeNormally = internals._writeToOutput.bind(rl);
+  internals._writeToOutput = (chunk: string) => {
+    if (!hideInput) return writeNormally(chunk);
+    if (chunk.includes(currentQuestion)) internals.output.write(currentQuestion);
+  };
+
+  const ask = (question: string, secret: boolean) =>
+    new Promise<string>((resolve) => {
+      hideInput = secret;
+      currentQuestion = question;
+
+      // Fires when stdin ends before an answer arrives. Without this the
+      // promise never settles and the rest of the script is skipped silently.
+      const onClose = () => resolve("");
+      rl.once("close", onClose);
+
+      rl.question(question, (answer) => {
+        rl.removeListener("close", onClose);
+        if (hideInput) process.stdout.write("\n");
+        hideInput = false;
+        resolve(answer.trim());
+      });
     });
-  });
+
+  return { ask, close: () => rl.close() };
 }
 
 /**
@@ -106,14 +158,24 @@ async function main() {
 
   await copyFile(EXAMPLE_PATH, ENV_PATH);
   let contents = await readFile(ENV_PATH, "utf8");
+  let apiKeySet = false;
+  let voiceIdSet = false;
 
   console.log("\nTwo values to set now. Leave either blank to fill in later.\n");
 
-  const apiKey = await prompt("  ELEVENLABS_API_KEY (hidden): ", true);
-  if (apiKey) contents = setValue(contents, "ELEVENLABS_API_KEY", apiKey);
+  const asker = await createAsker();
+  try {
+    const apiKey = await asker.ask("  ELEVENLABS_API_KEY (hidden): ", true);
+    if (apiKey) contents = setValue(contents, "ELEVENLABS_API_KEY", apiKey);
 
-  const voiceId = await prompt("  ELEVENLABS_VOICE_ID: ", false);
-  if (voiceId) contents = setValue(contents, "ELEVENLABS_VOICE_ID", voiceId);
+    const voiceId = await asker.ask("  ELEVENLABS_VOICE_ID: ", false);
+    if (voiceId) contents = setValue(contents, "ELEVENLABS_VOICE_ID", voiceId);
+
+    apiKeySet = Boolean(apiKey);
+    voiceIdSet = Boolean(voiceId);
+  } finally {
+    asker.close();
+  }
 
   await writeFile(ENV_PATH, contents);
   // writeFile's `mode` only applies when it creates the file, and copyFile
@@ -124,8 +186,8 @@ async function main() {
   console.log(`
 Wrote .env (mode 600, git-ignored).
 
-  ${apiKey ? "set" : "EMPTY"}  ELEVENLABS_API_KEY
-  ${voiceId ? "set" : "EMPTY"}  ELEVENLABS_VOICE_ID
+  ${apiKeySet ? "set  " : "EMPTY"}  ELEVENLABS_API_KEY
+  ${voiceIdSet ? "set  " : "EMPTY"}  ELEVENLABS_VOICE_ID
 
 Everything else in .env belongs to the Worker and is set with
 \`wrangler secret put\` instead — see docs/SETUP.md step 4.
